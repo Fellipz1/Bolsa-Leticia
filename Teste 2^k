@@ -1,0 +1,90 @@
+### Exemplo teste
+## sintetização de inibição de peças de polietileno de alta densidade
+
+# x1: espessura da camada (mm)
+# x2: Energia do aquecedor (J/mm^2)
+# x3: Velocidade de avanço do aquecedor (mm/s)
+# x4: Velocidade de avanço da impressora (mm/mm)
+
+# y: encolhimento das peças no sentido da larguta
+
+# https://link.springer.com/article/10.1007/s40799-018-0286-6
+###******************************###
+
+library (rsm)
+
+#planejamento
+design <- bbd(k = ~x1+x2+x3+x4,
+              block = F,
+              n0 = 5,
+              randomize = F,
+              coding = list(x1 ~ (Ac - 0.2)/0.1,
+                            x2 ~ (Ea - 25.32)/3.16,
+                            x3 ~ (vf_a - 3.35)/0.5,
+                            x4 ~ (vf_p - 100)/20))
+design
+
+#desvio na largura
+width <- c(5.3533, 5.2615, 5.0008, 4.2712, 4.5840, 2.7470, 3.8066, 3.9839, 4.3630, 3.5519, 4.0534,
+           4.0031, 5.1495, 4.5581, 4.1959, 3.5946, 5.1642, 4.0103, 3.6354, 4.2529, 3.5171, 4.4485,
+           5.3879, 3.4132, 3.8905, 4.3263, 4.2203, 3.9451, 3.9024)
+
+design$y <- width
+
+###*******************###
+
+#Analise
+rsm.bbd <- rsm(y ~ SO (x1,x2, x3, x4), data = design)
+summary(rsm.bbd)
+
+###*******************###
+
+#Normalidade
+shapiro.test(rsm.bbd$residuals)
+
+###*******************###
+
+#Graficos
+par(mfrow = c(2,3))
+contour(rsm.bbd, ~x1 + x2, image = TRUE)
+contour(rsm.bbd, ~x1 + x3, image = TRUE)
+contour(rsm.bbd, ~x1 + x4, image = TRUE)
+contour(rsm.bbd, ~x2 + x3, image = TRUE)
+contour(rsm.bbd, ~x2 + x4, image = TRUE)
+contour(rsm.bbd, ~x3 + x4, image = TRUE)
+
+persp(rsm.bbd, ~x1 + x2, zlab="y[%]", col = rainbow(50), contours = ("colors"))
+persp(rsm.bbd, ~x1 + x3, zlab="y[%]", col = rainbow(50), contours = ("colors"))
+persp(rsm.bbd, ~x1 + x4, zlab="y[%]", col = rainbow(50), contours = ("colors"))
+persp(rsm.bbd, ~x2 + x3, zlab="y[%]", col = rainbow(50), contours = ("colors"))
+persp(rsm.bbd, ~x2 + x4, zlab="y[%]", col = rainbow(50), contours = ("colors"))
+persp(rsm.bbd, ~x3 + x4, zlab="y[%]", col = rainbow(50), contours = ("colors"))
+
+###************###
+
+#Otimização restrita
+otimo <- steepest(rsm.bbd, dist=seq(0, sqrt(2), by=.1), descent=T)
+otimo
+
+x_ <- c(otimo$x1[nrow(otimo)], otimo$x2[nrow(otimo)], otimo$x3[nrow(otimo)], otimo$x4[nrow(otimo)])
+names(x_) <- c("x1", "x2", "x3", "x4")
+
+par(mfrow = c(2,3))
+contour(rsm.bbd, ~x1 + x2, col = "black", decode = F, at = x_)
+points(x2 ~ x1, data = otimo, col = "blue", pch = "*")
+
+contour(rsm.bbd, ~x1 + x3, col = "black", decode = F, at = x_)
+points(x3 ~ x1, data = otimo, col = "blue", pch = "*")
+
+contour(rsm.bbd, ~x1 + x4, col = "black", decode = F, at = x_)
+points(x4 ~ x1, data = otimo, col = "blue", pch = "*")
+
+contour(rsm.bbd, ~x2 + x3, col = "black", decode = F, at = x_)
+points(x3 ~ x2, data = otimo, col = "blue", pch = "*")
+
+contour(rsm.bbd, ~x2 + x4, col = "black", decode = F, at = x_)
+points(x4 ~ x2, data = otimo, col = "blue", pch = "*")
+
+contour(rsm.bbd, ~x3 + x4, col = "black", decode = F, at = x_)
+points(x4 ~ x3, data = otimo, col = "blue", pch = "*")
+
