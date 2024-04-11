@@ -1,0 +1,82 @@
+### Exemplo teste com 3 entradas
+
+#Eletropolimento
+
+# x1: Voltagem (4,6,8) [V]
+# x2:Tempo (30, 45, 60) [s]
+# x3: Temperatura (20, 40, 60) [°C]
+
+# y: Profundidade do polimento [um]
+
+#DOI: 10.1007/s11665-016-2140-2
+
+###******************************###
+##Planejamento
+
+# Planejamento codificado
+plan<- expand.grid(x1=c(-1,0,1),
+                   x2=c(-1,0,1),
+                   x3=c(-1,0,1))
+
+#resposta profundidade de polimento
+d <- c(4.032, 8.545, 10.328, 4.451, 7.009, 12.437, 5.088, 8.409, 13.438,
+     5.719, 10.81, 17.368, 6.494, 13.124, 33.127, 10.27, 19.943, 59.087,
+     10.834, 20.873, 51.136, 13.64, 28.244, 67.712, 16.175, 43.145, 79.951)
+
+plan$y <- d
+plan
+###************************###
+#pacote rsm
+library(rsm)
+
+#Analise
+res.fat3k <- rsm(y ~ SO (x1,x2,x3), data = plan)
+summary(res.fat3k)
+
+###************************###
+# Graficos de controle e superficie
+par(mfrow = c(2,3))
+contour(res.fat3k, ~x1 + x2, image = TRUE)
+contour(res.fat3k, ~x1 + x3, image = TRUE)
+contour(res.fat3k, ~x2 + x3, image = TRUE)
+
+persp(res.fat3k, ~x1 + x2, zlab="Ra [um]",col = rainbow(50),contours = ("colors"))
+persp(res.fat3k, ~x1 + x3, zlab="Ra [um]",col = rainbow(50),contours = ("colors"))
+persp(res.fat3k, ~x2 + x3, zlab="Ra [um]",col = rainbow(50),contours = ("colors"))
+
+###**********************###
+#Teste de normalidade dos residuos
+shapiro.test(res.fat3k$residuals)
+
+lml <- lm(y ~ SO(x1,x2,x3), data = plan)
+par(mfrow = c(2,2))
+plot(lml)
+
+###********************###
+#Função para otimização não linear restrita
+d <- function(x){
+  d_hat <- predict(res.fat3k, newdata = data.frame(x1 = x[1],
+                                                   x2 = x[2],
+                                                   x3 = x[3]))
+  return(d_hat)
+}
+
+###****************************************###
+#Otimização não linear usando comando optim (analise rigida)
+otim <- optim(par = c(0,0,0),fn = d, method = "L-BFGS-B", lower = rep(-1,3), upper = rep(1,3))
+otim
+
+# Separando níveis ótimos codificados
+x_otim <- otim$par
+names(x_otim) <- c("x1","x2","x3")
+
+#Plotando no ponto otimo
+par(mfrow = c(1,1))
+contour(res.fat3k, ~x1 + x3, image = TRUE, at = x_otim)
+persp(res.fat3k, ~x1 + x3, zlab = "Ra [um]", col = rainbow(50), contours = ("colors"), at = x_otim)
+
+#Decodificando ponto otimo
+
+Voltagem <- x_otim[1]*2 + 6
+Tempo <- x_otim[2]*15 + 45
+Temperatura <- x_otim*20 + 40
